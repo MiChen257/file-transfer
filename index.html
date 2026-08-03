@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>弥尘 · 文件中转站</title>
+<style>
+:root {
+  --orange: #f0833a;
+  --orange-light: #fff3eb;
+  --orange-dark: #d96e28;
+  --bg: #faf7f4;
+  --card: #fff;
+  --text: #3d3229;
+  --text-light: #8c7b6b;
+  --border: #e8ddd2;
+  --danger: #e05555;
+  --danger-light: #fef0f0;
+  --radius: 14px;
+  --shadow: 0 2px 16px rgba(0,0,0,.06);
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans SC", sans-serif; background: var(--bg); color: var(--text); min-height:100vh; }
+.hidden { display:none !important; }
+
+/* 登录页 */
+.login-page { display:flex; align-items:center; justify-content:center; min-height:100vh; padding:20px; }
+.login-card { background:var(--card); border-radius:var(--radius); padding:40px 32px; width:100%; max-width:380px; box-shadow:var(--shadow); text-align:center; }
+.login-card .icon { font-size:48px; margin-bottom:12px; }
+.login-card h1 { font-size:22px; margin-bottom:6px; color:var(--orange); }
+.login-card .sub { font-size:13px; color:var(--text-light); margin-bottom:24px; }
+.login-card input { width:100%; padding:12px 16px; border:2px solid var(--border); border-radius:10px; font-size:16px; outline:none; transition:border .2s; text-align:center; letter-spacing:3px; }
+.login-card input:focus { border-color:var(--orange); }
+.login-card .err { color:var(--danger); font-size:13px; margin-top:8px; min-height:20px; }
+.login-card button { width:100%; padding:12px; background:var(--orange); color:#fff; border:none; border-radius:10px; font-size:16px; cursor:pointer; margin-top:12px; transition: background .2s; }
+.login-card button:hover { background:var(--orange-dark); }
+
+/* 主页 */
+.main-page { max-width:720px; margin:0 auto; padding:16px; }
+.header { display:flex; align-items:center; justify-content:space-between; padding:12px 0; }
+.header .brand { font-size:18px; font-weight:700; color:var(--orange); }
+.header .actions { display:flex; gap:8px; }
+.header .actions button { background:var(--card); border:1px solid var(--border); border-radius:8px; padding:7px 14px; cursor:pointer; font-size:13px; color:var(--text); transition:all .2s; }
+.header .actions button:hover { background:var(--orange-light); border-color:var(--orange); }
+.header .actions .btn-danger { color:var(--danger); }
+.header .actions .btn-danger:hover { background:var(--danger-light); border-color:var(--danger); }
+
+/* 卡片 */
+.card { background:var(--card); border-radius:var(--radius); padding:20px; margin-bottom:16px; box-shadow:var(--shadow); }
+.card-title { font-size:16px; font-weight:600; margin-bottom:16px; display:flex; align-items:center; gap:8px; }
+.card-title .emoji { font-size:20px; }
+
+/* 文字剪贴板 */
+.text-input-area { display:flex; gap:10px; margin-bottom:16px; }
+.text-input-area textarea { flex:1; padding:12px; border:2px solid var(--border); border-radius:10px; font-size:14px; resize:vertical; min-height:60px; outline:none; font-family:inherit; transition:border .2s; }
+.text-input-area textarea:focus { border-color:var(--orange); }
+.text-input-area button { padding:0 20px; background:var(--orange); color:#fff; border:none; border-radius:10px; font-size:14px; cursor:pointer; white-space:nowrap; transition:background .2s; }
+.text-input-area button:hover { background:var(--orange-dark); }
+
+.toolbar { display:flex; align-items:center; gap:10px; margin-bottom:12px; flex-wrap:wrap; }
+.toolbar .select-all { font-size:12px; color:var(--orange); cursor:pointer; background:none; border:none; }
+.toolbar .batch-delete { font-size:12px; padding:5px 12px; background:var(--danger); color:#fff; border:none; border-radius:6px; cursor:pointer; transition:background .2s; }
+.toolbar .batch-delete:hover { background:#c94444; }
+.toolbar .batch-delete:disabled { background:#ccc; cursor:not-allowed; }
+.toolbar .count { font-size:12px; color:var(--text-light); margin-left:auto; }
+
+.note-list, .file-list { list-style:none; }
+.note-item, .file-item { display:flex; align-items:center; gap:10px; padding:12px; border-radius:10px; border:1px solid transparent; transition:all .2s; }
+.note-item:hover, .file-item:hover { background:var(--orange-light); border-color:var(--border); }
+.note-item input[type=checkbox], .file-item input[type=checkbox] { width:16px; height:16px; accent-color:var(--orange); cursor:pointer; flex-shrink:0; }
+.note-content { flex:1; min-width:0; }
+.note-content .text { font-size:14px; line-height:1.5; word-break:break-all; display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden; }
+.note-content .meta { font-size:11px; color:var(--text-light); margin-top:3px; }
+.file-info { flex:1; min-width:0; }
+.file-info .fname { font-size:14px; font-weight:500; word-break:break-all; }
+.file-info .fmeta { font-size:11px; color:var(--text-light); margin-top:3px; }
+.item-actions { display:flex; gap:6px; flex-shrink:0; }
+.item-actions button { font-size:12px; padding:5px 10px; border-radius:6px; border:1px solid var(--border); background:var(--card); cursor:pointer; transition:all .2s; white-space:nowrap; }
+.item-actions button:hover { background:var(--orange-light); border-color:var(--orange); }
+.item-actions .btn-copy { color:var(--orange); }
+.item-actions .btn-del { color:var(--danger); }
+.item-actions .btn-del:hover { background:var(--danger-light); border-color:var(--danger); }
+.item-actions .btn-dl { color:var(--orange); }
+
+.empty { text-align:center; padding:30px; color:var(--text-light); font-size:13px; }
+
+/* 文件上传区 */
+.upload-zone { border:2px dashed var(--border); border-radius:10px; padding:30px; text-align:center; cursor:pointer; transition:all .2s; margin-bottom:16px; }
+.upload-zone:hover, .upload-zone.drag { border-color:var(--orange); background:var(--orange-light); }
+.upload-zone .up-icon { font-size:36px; margin-bottom:8px; }
+.upload-zone .up-text { font-size:14px; color:var(--text-light); }
+.upload-zone .up-hint { font-size:12px; color:var(--text-light); margin-top:4px; }
+
+.progress-bar { height:6px; background:var(--border); border-radius:3px; margin-top:8px; overflow:hidden; }
+.progress-bar .fill { height:100%; background:var(--orange); border-radius:3px; transition:width .3s; width:0%; }
+
+/* 弹窗 */
+.modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,.3); display:flex; align-items:center; justify-content:center; z-index:100; }
+.modal { background:var(--card); border-radius:var(--radius); padding:28px; width:90%; max-width:380px; box-shadow:0 8px 40px rgba(0,0,0,.15); }
+.modal h3 { font-size:16px; margin-bottom:16px; color:var(--orange); }
+.modal label { display:block; font-size:13px; color:var(--text-light); margin-bottom:4px; margin-top:12px; }
+.modal label:first-of-type { margin-top:0; }
+.modal input { width:100%; padding:10px 14px; border:2px solid var(--border); border-radius:8px; font-size:14px; outline:none; transition:border .2s; }
+.modal input:focus { border-color:var(--orange); }
+.modal .modal-err { color:var(--danger); font-size:12px; margin-top:4px; min-height:18px; }
+.modal .modal-btns { display:flex; gap:8px; margin-top:16px; }
+.modal .modal-btns button { flex:1; padding:10px; border-radius:8px; font-size:14px; cursor:pointer; border:none; transition:background .2s; }
+.modal .btn-cancel { background:var(--border); color:var(--text); }
+.modal .btn-cancel:hover { background:#d9cec1; }
+.modal .btn-confirm { background:var(--orange); color:#fff; }
+.modal .btn-confirm:hover { background:var(--orange-dark); }
+
+/* 成功提示 */
+.toast { position:fixed; top:20px; left:50%; transform:translateX(-50%); background:#4caf50; color:#fff; padding:10px 24px; border-radius:20px; font-size:14px; z-index:200; animation: fadeInOut 2.5s forwards; }
+@keyframes fadeInOut {
+  0% { opacity:0; transform:translateX(-50%) translateY(-10px); }
+  15% { opacity:1; transform:translateX(-50%) translateY(0); }
+  75% { opacity:1; }
+  100% { opacity:0; }
+}
+
+@media (max-width:480px) {
+  .main-page { padding:10px; }
+  .card { padding:14px; }
+  .text-input-area { flex-direction:column; }
+  .text-input-area button { padding:10px; }
+  .header { flex-wrap:wrap; gap:8px; }
+}
+</style>
+</head>
+<body>
+
+<!-- 登录页 -->
+<div id="loginPage" class="login-page">
+  <div class="login-card">
+    <div class="icon">🔐</div>
+    <h1>弥尘 · 文件中转站</h1>
+    <p class="sub">输入密码进入</p>
+    <input type="password" id="pwdInput" placeholder="请输入密码" maxlength="64" autocomplete="off">
+    <div class="err" id="loginErr"></div>
+    <button onclick="doLogin()">进入</button>
+  </div>
+</div>
+
+<!-- 主页 -->
+<div id="mainPage" class="main-page hidden">
+  <div class="header">
+    <span class="brand">🍊 弥尘 · 文件中转站</span>
+    <div class="actions">
+      <button onclick="showPwdModal()">⚙️ 改密码</button>
+      <button class="btn-danger" onclick="doLogout()">退出</button>
+    </div>
+  </div>
+
+  <!-- 文字剪贴板 -->
+  <div class="card">
+    <div class="card-title"><span class="emoji">📝</span> 文字剪贴板</div>
+    <div class="text-input-area">
+      <textarea id="textInput" placeholder="粘贴文字，Ctrl+Enter 发送…" rows="2"></textarea>
+      <button onclick="addNote()">发送</button>
+    </div>
+    <div class="toolbar">
+      <button class="select-all" onclick="toggleSelectAll('note')">☑️ 全选/取消</button>
+      <button class="batch-delete" id="noteBatchDel" disabled onclick="batchDelete('note')">🗑️ 批量删除</button>
+      <span class="count" id="noteCount">共 0 条</span>
+    </div>
+    <ul class="note-list" id="noteList"></ul>
+    <div class="empty" id="noteEmpty">暂无文字记录，粘贴文字发送即可保存</div>
+  </div>
+
+  <!-- 文件传输 -->
+  <div class="card">
+    <div class="card-title"><span class="emoji">📁</span> 文件传输</div>
+    <div class="upload-zone" id="uploadZone" onclick="document.getElementById('fileInput').click()">
+      <div class="up-icon">📤</div>
+      <div class="up-text">点击或拖拽文件上传</div>
+      <div class="up-hint">单文件最大 2TB</div>
+      <div class="progress-bar hidden" id="progressBar"><div class="fill" id="progressFill"></div></div>
+    </div>
+    <input type="file" id="fileInput" hidden multiple onchange="handleFiles(this.files)">
+    <div class="toolbar">
+      <button class="select-all" onclick="toggleSelectAll('file')">☑️ 全选/取消</button>
+      <button class="batch-delete" id="fileBatchDel" disabled onclick="batchDelete('file')">🗑️ 批量删除</button>
+      <span class="count" id="fileCount">共 0 个文件</span>
+    </div>
+    <ul class="file-list" id="fileList"></ul>
+    <div class="empty" id="fileEmpty">暂无文件，点击上方区域上传</div>
+  </div>
+</div>
+
+<!-- 改密码弹窗 -->
+<div id="pwdModal" class="modal-overlay hidden">
+  <div class="modal">
+    <h3>🔑 修改密码</h3>
+    <label>旧密码</label>
+    <input type="password" id="oldPwd" placeholder="输入旧密码">
+    <label>新密码</label>
+    <input type="password" id="newPwd" placeholder="输入新密码（至少6位）">
+    <label>确认新密码</label>
+    <input type="password" id="newPwd2" placeholder="再次输入新密码">
+    <div class="modal-err" id="modalErr"></div>
+    <div class="modal-btns">
+      <button class="btn-cancel" onclick="hidePwdModal()">取消</button>
+      <button class="btn-confirm" onclick="changePwd()">确认修改</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ========== 存储层 ==========
+const DB_NAME = 'FileHubDB';
+const DB_VER = 1;
+let db = null;
+
+function openDB() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(DB_NAME, DB_VER);
+    req.onupgradeneeded = e => {
+      const d = e.target.result;
+      if (!d.objectStoreNames.contains('files')) {
+        d.createObjectStore('files', { keyPath: 'id' });
+      }
+    };
+    req.onsuccess = e => { db = e.target.result; resolve(db); };
+    req.onerror = () => reject(req.error);
+  });
+}
+
+function dbAdd(file) {
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction('files', 'readwrite');
+    tx.objectStore('files').add(file);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
+function dbGetAll() {
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction('files', 'readonly');
+    const req = tx.objectStore('files').getAll();
+    req.onsuccess = () => resolve(req.result || []);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+function dbDelete(ids) {
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction('files', 'readwrite');
+    const store = tx.objectStore('files');
+    ids.forEach(id => store.delete(id));
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
+function getPwd() { return localStorage.getItem('fh_pwd') || 'm123456'; }
+function setPwd(v) { localStorage.setItem('fh_pwd', v); }
+function getNotes() {
+  try { return JSON.parse(localStorage.getItem('fh_notes') || '[]'); }
+  catch { return []; }
+}
+function setNotes(v) { localStorage.setItem('fh_notes', JSON.stringify(v)); }
+
+// ========== 登录 ==========
+const loginPage = document.getElementById('loginPage');
+const mainPage = document.getElementById('mainPage');
+let loggedIn = sessionStorage.getItem('fh_login') === '1';
+
+function init() {
+  if (loggedIn) { showMain(); } else { showLogin(); }
+  openDB().then(() => { if (loggedIn) renderAll(); });
+}
+
+function showLogin() {
+  loginPage.classList.remove('hidden');
+  mainPage.classList.add('hidden');
+  document.getElementById('pwdInput').value = '';
+  document.getElementById('loginErr').textContent = '';
+}
+
+function showMain() {
+  loginPage.classList.add('hidden');
+  mainPage.classList.remove('hidden');
+  renderAll();
+}
+
+function doLogin() {
+  const input = document.getElementById('pwdInput').value;
+  if (input === getPwd()) {
+    sessionStorage.setItem('fh_login', '1');
+    loggedIn = true;
+    showMain();
+  } else {
+    document.getElementById('loginErr').textContent = '密码错误';
+  }
+}
+
+function doLogout() {
+  sessionStorage.removeItem('fh_login');
+  loggedIn = false;
+  showLogin();
+}
+
+document.getElementById('pwdInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') doLogin();
+});
+
+// ========== 文字剪贴板 ==========
+function addNote() {
+  const ta = document.getElementById('textInput');
+  const text = ta.value.trim();
+  if (!text) return;
+  const notes = getNotes();
+  notes.unshift({
+    id: Date.now().toString(36) + Math.random().toString(36).slice(2,6),
+    content: text,
+    time: new Date().toISOString()
+  });
+  setNotes(notes);
+  ta.value = '';
+  renderNotes();
+}
+
+document.getElementById('textInput').addEventListener('keydown', e => {
+  if (e.ctrlKey && e.key === 'Enter') addNote();
+});
+
+function renderNotes() {
+  const notes = getNotes();
+  const list = document.getElementById('noteList');
+  const empty = document.getElementById('noteEmpty');
+  const count = document.getElementById('noteCount');
+  count.textContent = `共 ${notes.length} 条`;
+  empty.classList.toggle('hidden', notes.length > 0);
+
+  const sel = new Set(JSON.parse(sessionStorage.getItem('fh_note_sel') || '[]'));
+  list.innerHTML = notes.map(n => `
+    <li class="note-item">
+      <input type="checkbox" ${sel.has(n.id)?'checked':''} data-id="${n.id}" onchange="onCheck('note',this)">
+      <div class="note-content">
+        <div class="text">${escHtml(n.content)}</div>
+        <div class="meta">${fmtTime(n.time)}</div>
+      </div>
+      <div class="item-actions">
+        <button class="btn-copy" onclick="copyText('${n.id}')">📋 复制</button>
+        <button class="btn-del" onclick="deleteNote('${n.id}')">删除</button>
+      </div>
+    </li>`).join('');
+
+  updateBatchBtn('note');
+}
+
+function copyText(id) {
+  const notes = getNotes();
+  const n = notes.find(x => x.id === id);
+  if (!n) return;
+  navigator.clipboard.writeText(n.content).then(() => toast('已复制到剪贴板'));
+}
+
+function deleteNote(id) {
+  if (!confirm('确定删除这条记录？')) return;
+  setNotes(getNotes().filter(n => n.id !== id));
+  renderNotes();
+}
+
+// ========== 文件传输 ==========
+function handleFiles(files) {
+  if (!files.length) return;
+  const bar = document.getElementById('progressBar');
+  const fill = document.getElementById('progressFill');
+  bar.classList.remove('hidden');
+  fill.style.width = '0%';
+
+  let done = 0;
+  const total = files.length;
+
+  Array.from(files).forEach((file, i) => {
+    if (file.size > 2 * 1024 * 1024 * 1024 * 1024) {
+      toast(`"${file.name}" 超过 2TB 限制`);
+      done++;
+      fill.style.width = (done / total * 100) + '%';
+      if (done === total) setTimeout(() => bar.classList.add('hidden'), 800);
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = function() {
+      dbAdd({
+        id: Date.now().toString(36) + Math.random().toString(36).slice(2,6) + '_' + i,
+        name: file.name,
+        size: file.size,
+        type: file.type,
+        data: reader.result,
+        time: new Date().toISOString()
+      }).then(() => {
+        done++;
+        fill.style.width = (done / total * 100) + '%';
+        if (done === total) {
+          setTimeout(() => bar.classList.add('hidden'), 500);
+          renderFiles();
+        }
+      });
+    };
+    reader.readAsDataURL(file);
+  });
+  document.getElementById('fileInput').value = '';
+}
+
+function renderFiles() {
+  dbGetAll().then(files => {
+    files.sort((a,b) => new Date(b.time) - new Date(a.time));
+    const list = document.getElementById('fileList');
+    const empty = document.getElementById('fileEmpty');
+    const count = document.getElementById('fileCount');
+    count.textContent = `共 ${files.length} 个文件`;
+    empty.classList.toggle('hidden', files.length > 0);
+
+    const sel = new Set(JSON.parse(sessionStorage.getItem('fh_file_sel') || '[]'));
+    list.innerHTML = files.map(f => `
+      <li class="file-item">
+        <input type="checkbox" ${sel.has(f.id)?'checked':''} data-id="${f.id}" onchange="onCheck('file',this)">
+        <div class="file-info">
+          <div class="fname">${escHtml(f.name)}</div>
+          <div class="fmeta">${fmtSize(f.size)} · ${fmtTime(f.time)}</div>
+        </div>
+        <div class="item-actions">
+          <button class="btn-dl" onclick="downloadFile('${f.id}')">⬇ 下载</button>
+          <button class="btn-del" onclick="deleteFile('${f.id}')">删除</button>
+        </div>
+      </li>`).join('');
+
+    updateBatchBtn('file');
+  });
+}
+
+function downloadFile(id) {
+  dbGetAll().then(files => {
+    const f = files.find(x => x.id === id);
+    if (!f) return;
+    const a = document.createElement('a');
+    a.href = f.data;
+    a.download = f.name;
+    a.click();
+  });
+}
+
+function deleteFile(id) {
+  if (!confirm('确定删除这个文件？')) return;
+  dbDelete([id]).then(() => renderFiles());
+}
+
+// ========== 多选删除 ==========
+function onCheck(type, cb) {
+  const key = `fh_${type}_sel`;
+  let sel = new Set(JSON.parse(sessionStorage.getItem(key) || '[]'));
+  if (cb.checked) sel.add(cb.dataset.id); else sel.delete(cb.dataset.id);
+  sessionStorage.setItem(key, JSON.stringify([...sel]));
+  updateBatchBtn(type);
+}
+
+function toggleSelectAll(type) {
+  const key = `fh_${type}_sel`;
+  let sel = new Set(JSON.parse(sessionStorage.getItem(key) || '[]'));
+  const cbs = document.querySelectorAll(`.${type==='note'?'note-item':'file-item'} input[type=checkbox]`);
+  if (sel.size === cbs.length && cbs.length > 0) {
+    sel.clear();
+    cbs.forEach(cb => cb.checked = false);
+  } else {
+    cbs.forEach(cb => { cb.checked = true; sel.add(cb.dataset.id); });
+  }
+  sessionStorage.setItem(key, JSON.stringify([...sel]));
+  updateBatchBtn(type);
+}
+
+function batchDelete(type) {
+  const key = `fh_${type}_sel`;
+  const sel = JSON.parse(sessionStorage.getItem(key) || '[]');
+  if (!sel.length) return;
+  if (!confirm(`确定删除选中的 ${sel.length} 项？`)) return;
+
+  if (type === 'note') {
+    setNotes(getNotes().filter(n => !sel.includes(n.id)));
+    sessionStorage.setItem(key, '[]');
+    renderNotes();
+  } else {
+    dbDelete(sel).then(() => {
+      sessionStorage.setItem(key, '[]');
+      renderFiles();
+    });
+  }
+}
+
+function updateBatchBtn(type) {
+  const key = `fh_${type}_sel`;
+  const sel = JSON.parse(sessionStorage.getItem(key) || '[]');
+  const btn = document.getElementById(type === 'note' ? 'noteBatchDel' : 'fileBatchDel');
+  btn.disabled = sel.length === 0;
+  if (sel.length) btn.textContent = `🗑️ 删除(${sel.length})`; else btn.textContent = '🗑️ 批量删除';
+}
+
+// ========== 改密码 ==========
+function showPwdModal() {
+  document.getElementById('pwdModal').classList.remove('hidden');
+  document.getElementById('oldPwd').value = '';
+  document.getElementById('newPwd').value = '';
+  document.getElementById('newPwd2').value = '';
+  document.getElementById('modalErr').textContent = '';
+}
+
+function hidePwdModal() {
+  document.getElementById('pwdModal').classList.add('hidden');
+}
+
+function changePwd() {
+  const oldPwd = document.getElementById('oldPwd').value;
+  const newPwd = document.getElementById('newPwd').value;
+  const newPwd2 = document.getElementById('newPwd2').value;
+  const err = document.getElementById('modalErr');
+
+  if (oldPwd !== getPwd()) { err.textContent = '旧密码错误'; return; }
+  if (newPwd.length < 6) { err.textContent = '新密码至少6位'; return; }
+  if (newPwd !== newPwd2) { err.textContent = '两次输入不一致'; return; }
+  if (newPwd === oldPwd) { err.textContent = '新密码不能与旧密码相同'; return; }
+
+  setPwd(newPwd);
+  hidePwdModal();
+  toast('密码已修改，下次登录生效');
+}
+
+// ========== 工具函数 ==========
+function renderAll() { renderNotes(); renderFiles(); }
+function escHtml(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+function fmtTime(t) { const d = new Date(t); return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`; }
+function pad(n) { return n < 10 ? '0' + n : n; }
+function fmtSize(b) { if (b < 1024) return b + ' B'; if (b < 1048576) return (b/1024).toFixed(1) + ' KB'; return (b/1048576).toFixed(1) + ' MB'; }
+function toast(msg) {
+  const t = document.createElement('div'); t.className = 'toast'; t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 2600);
+}
+
+// 拖拽上传
+const uploadZone = document.getElementById('uploadZone');
+uploadZone.addEventListener('dragover', e => { e.preventDefault(); uploadZone.classList.add('drag'); });
+uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('drag'));
+uploadZone.addEventListener('drop', e => { e.preventDefault(); uploadZone.classList.remove('drag'); handleFiles(e.dataTransfer.files); });
+
+// 点击遮罩关闭弹窗
+document.getElementById('pwdModal').addEventListener('click', function(e) {
+  if (e.target === this) hidePwdModal();
+});
+
+init();
+</script>
+</body>
+</html>
